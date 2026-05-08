@@ -4,22 +4,25 @@
 # OpenWrt 25 专用
 # ==========================================
 
-# 追加 kenzok8 的 openwrt-packages 源（大量实用包）
-echo "src-git kenzo https://github.com/kenzok8/openwrt-packages.git" >> feeds.conf.default
+echo "===== 配置 feeds 源 ====="
 
-# 追加 kenzok8 的 small 源（基础依赖包、科学上网插件）
-echo "src-git small https://github.com/kenzok8/small.git" >> feeds.conf.default
+# 清除旧的 feeds.conf，从零开始
+> feeds.conf
 
-# 追加 kenzok8 的 small-package 源（CUPS 等完整包）
-echo "src-git smpackage https://github.com/kenzok8/small-package" >> feeds.conf.default
+# 先写官方 feeds（保证基础源正确）
+echo "src-git packages https://github.com/openwrt/packages.git;openwrt-24.10" >> feeds.conf
+echo "src-git luci https://github.com/openwrt/luci.git;openwrt-24.10" >> feeds.conf
 
-# 追加 helloworld 源（SSR-Plus 的原始来源）
-echo "src-git helloworld https://github.com/fw876/helloworld" >> feeds.conf.default
+# 再添加第三方 feeds
+echo "src-git immortalwrt https://github.com/immortalwrt/packages.git;openwrt-24.10" >> feeds.conf
+echo "src-git kenzo https://github.com/kenzok8/openwrt-packages.git" >> feeds.conf
+echo "src-git small https://github.com/kenzok8/small.git" >> feeds.conf
+echo "src-git smpackage https://github.com/kenzok8/small-package" >> feeds.conf
+echo "src-git helloworld https://github.com/fw876/helloworld" >> feeds.conf
+echo "src-git cups https://github.com/op4packages/openwrt-cups.git" >> feeds.conf
 
-# 追加 immortalwrt 源（完整 CUPS 打印包）
-echo "src-git immortalwrt https://github.com/immortalwrt/packages.git" >> feeds.conf.default
-
-# 追加 openwrt-cups 源（ghostscript, gutenprint, foomatic）
-echo "src-git cups https://github.com/op4packages/openwrt-cups.git" >> feeds.conf.default
-
-echo "✅ [OpenWrt 25] 已添加 kenzo、small、smpackage、helloworld、immortalwrt、cups 源"
+echo "✅ feeds.conf 配置完成"
+echo "已添加："
+echo "  - 官方: packages, luci (优先级高)"
+echo "  - 第三方: immortalwrt, kenzo, small, smpackage, helloworld, cups"
+cat feeds.conf
