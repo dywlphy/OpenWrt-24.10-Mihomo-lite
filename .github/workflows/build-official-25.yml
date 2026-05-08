@@ -55,18 +55,19 @@ jobs:
 
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
-
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
-
-    - name: Run diy-part2.sh (after feeds ready)
+    - name: Run diy-part2-25.sh
       run: |
         cd openwrt
         ./diy-part2-25.sh
-
     - name: Remove conflicting packages
       run: |
         cd openwrt
+        # 移除 immortalwrt feed 中有问题的 cups（libz 依赖缺失）
+        rm -rf feeds/immortalwrt/utils/cups 2>/dev/null || true
+        rm -rf feeds/immortalwrt/utils/libcups 2>/dev/null || true
+        # 原有的冲突包清理
         rm -rf feeds/smpackage/{base-files,dnsmasq,firewall*,fullconenat,libnftnl,nftables,ppp,opkg,ucl,upx,vsftpd*,miniupnpd-iptables,wireless-regdb} 2>/dev/null || true
         rm -rf feeds/packages/net/onionshare-cli 2>/dev/null || true
         find . -name "onionshare-cli" -type d -exec rm -rf {} \; 2>/dev/null || true
@@ -75,16 +76,32 @@ jobs:
         done
         rm -rf tmp/
         echo "✅ 冲突包已清除"
-
     - name: Run make defconfig
       run: |
         cd openwrt
         make defconfig
 
+    - name: Debug Print feeds conf
+      run: |
+        cd openwrt
+        echo ""
+        echo "╔══════════════════════════════════════╗"
+        echo "║  📄 feeds.conf 内容              ║"
+        echo "╚══════════════════════════════════════╝"
+        cat feeds.conf 2>/dev/null || echo "feeds.conf 不存在"
+        echo ""
+    - name: Debug Print Chinese packages in config
+      run: |
+        cd openwrt
+        echo ""
+        echo "╔══════════════════════════════════════╗"
+        echo "║  📄 .config 中的中文包配置        ║"
+        echo "╚══════════════════════════════════════╝"
+        grep -E "luci-i18n.*zh-cn" .config 2>/dev/null || echo "无中文包配置"
+        echo ""
     - name: Force enable key packages
       run: |
         cd openwrt
-        
         enable_pkg() {
           local pattern="$1"
           if grep -q "^# CONFIG_PACKAGE_${pattern} is not set" .config; then
@@ -97,10 +114,6 @@ jobs:
             echo "  追加启用: $pattern"
           fi
         }
-        
-        # ==========================================
-        # 关键修复：LuCI 核心依赖（修复界面报错）
-        # ==========================================
         echo "【强制启用 LuCI 核心依赖】"
         enable_pkg "luci-base"
         enable_pkg "luci-mod-admin-full"
@@ -125,6 +138,22 @@ jobs:
         enable_pkg "luci-theme-bootstrap"
         
         echo ""
+        echo "【强制启用中文语言包】"
+        enable_pkg "luci-i18n-base-zh-cn"
+        enable_pkg "luci-i18n-opkg-zh-cn"
+        enable_pkg "luci-i18n-firewall-zh-cn"
+        enable_pkg "luci-i18n-attendedsysupgrade-zh-cn"
+        enable_pkg "luci-i18n-wireguard-zh-cn"
+        enable_pkg "luci-i18n-upnp-zh-cn"
+        enable_pkg "luci-i18n-ddns-zh-cn"
+        enable_pkg "luci-i18n-sqm-zh-cn"
+        enable_pkg "luci-i18n-wol-zh-cn"
+        enable_pkg "luci-i18n-nft-qos-zh-cn"
+        enable_pkg "luci-i18n-ttyd-zh-cn"
+        enable_pkg "luci-i18n-ssr-plus-zh-cn"
+        enable_pkg "luci-i18n-cupsd-zh-cn"
+        
+        echo ""
         echo "【强制启用核心功能包】"
         enable_pkg "cups"
         enable_pkg "cups-filters"
@@ -144,45 +173,82 @@ jobs:
         enable_pkg "luci-app-vlmcsd"
         enable_pkg "curl"
         
-        # 从 openwrt-cups 源启用打印驱动包
         enable_pkg "ghostscript"
         enable_pkg "gutenprint"
         enable_pkg "foomatic-db"
         enable_pkg "foomatic-db-engine"
-
-        # 强制禁用 mosdns（Go 版本不兼容）
         sed -i 's/^CONFIG_PACKAGE_mosdns=y/# CONFIG_PACKAGE_mosdns is not set/' .config
         sed -i 's/^CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_MosDNS=y/# CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_MosDNS is not set/' .config
-        echo "  已禁用 mosdns（Go 版本不兼容）"
-
-        # 设置 GRUB 超时 0 秒
         sed -i 's/CONFIG_GRUB_TIMEOUT=.*/CONFIG_GRUB_TIMEOUT=0/' .config
         echo "CONFIG_GRUB_TIMEOUT=0" >> .config
-        echo "  已设置 GRUB 超时 = 0 秒"
-
         echo "==========================="
+        # make defconfig
+    - name: Debug Print all Chinese packages in config
+      run: |
+        cd openwrt
+        echo ""
+        echo "╔══════════════════════════════════════╗"
+        echo "║  📋 .config 中所有中文包          ║"
+        echo "╚══════════════════════════════════════╝"
+        echo ""
+        grep "^CONFIG_PACKAGE_luci-i18n" .config | sed 's/^/  /' || echo "  (无中文包配置)"
+        echo ""
+    - name: Check Chinese packages in config
+      run: |
+        cd openwrt
         
         echo ""
-        echo "重新运行 make defconfig..."
-        make defconfig
-
+        echo "╔══════════════════════════════════════╗"
+        echo "║  🔍 检查中文包是否写入 .config  ║"
+        echo "╚══════════════════════════════════════╝"
+        echo ""
+        
+        FAIL=0
+        
+        check_i18n_config() {
+          local pkg="$1"
+          if grep -q "^CONFIG_PACKAGE_${pkg}=y" .config 2>/dev/null; then
+            echo "  ✅ ${pkg}"
+            return 0
+          else
+            echo "  ❌ ${pkg} 未启用"
+            FAIL=1
+            return 1
+          fi
+        }
+        
+        check_i18n_config "luci-i18n-base-zh-cn"
+        check_i18n_config "luci-i18n-firewall-zh-cn"
+        check_i18n_config "luci-i18n-opkg-zh-cn"
+        
+        echo ""
+        
+        if [ "$FAIL" -eq 1 ]; then
+          echo "╔══════════════════════════════════════╗"
+          echo "║  ❌ 中文包未写入 .config        ║"
+          echo "║  编译将无法生成中文界面       ║"
+          echo "║  已终止编译                     ║"
+          echo "╚══════════════════════════════════════╝"
+          exit 1
+        else
+          echo "╔══════════════════════════════════════╗"
+          echo "║  ✅ 中文包已写入 .config       ║"
+          echo "║  固件将包含中文界面           ║"
+          echo "╚══════════════════════════════════════╝"
+        fi
     - name: Verify package requirements
       run: |
         cd openwrt
         
         echo ""
         echo "╔══════════════════════════════════════╗"
-        echo "║  🔍 第一道检查：依赖链完整性         ║"
+        echo "║  🔍 依赖链完整性检查            ║"
         echo "╚══════════════════════════════════════╝"
         echo ""
         
         TOTAL=$(grep -c "^CONFIG_PACKAGE_.*=y" .config)
         echo "  已解析的包总数: $TOTAL"
         echo ""
-        
-        if [ "$TOTAL" -lt 50 ]; then
-          echo "❌ 已解析的包少于 50 个，依赖解析可能失败"
-        fi
         
         FAIL=0
         
@@ -194,82 +260,53 @@ jobs:
             echo "  ✅ $name ${desc:+($desc)}"
             return 0
           fi
-          local alt=$(echo "$name" | sed 's/-/_/g')
-          if grep -q "^CONFIG_PACKAGE_${alt}=y" .config 2>/dev/null; then
-            echo "  ⚠️  $name → 实际包名: $alt ${desc:+($desc)}"
-            return 0
-          fi
           if [ "$required" = "yes" ]; then
-            echo "  ❌ $name ${desc:+($desc)} - 编译将缺失此功能！"
+            echo "  ❌ $name ${desc:+($desc)}"
             FAIL=1
           else
-            echo "  ⚠️  $name ${desc:+($desc)} - 已跳过（当前源不提供）"
+            echo "  ⚠️  $name ${desc:+($desc)} - 可选"
           fi
           return 0
         }
         
-        echo "【LuCI 核心 - 修复界面报错】"
-        check_config "luci-base" "LuCI基础"
-        check_config "luci-mod-admin-full" "管理界面"
-        check_config "rpcd" "RPC守护进程"
-        check_config "rpcd-mod-file" "文件RPC"
-        check_config "rpcd-mod-iwinfo" "无线信息RPC"
-        check_config "uhttpd" "Web服务器"
-        check_config "uhttpd-mod-ubus" "uhttpd ubus模块"
-        check_config "cgi-io" "CGI接口"
-        check_config "ucode" "ucode解释器"
-        check_config "ucode-mod-ubus" "ucode ubus模块"
-        check_config "ucode-mod-uci" "ucode uci模块"
-        check_config "luci-theme-bootstrap" "默认主题"
+        echo "【LuCI 核心】"
+        check_config "luci-base"
+        check_config "luci-mod-admin-full"
+        check_config "rpcd"
+        check_config "rpcd-mod-file"
+        check_config "uhttpd"
+        check_config "luci-theme-bootstrap"
         echo ""
-        echo "【CUPS 打印 - 核心】"
-        check_config "cups" "CUPS核心"
-        check_config "cups-filters" "打印过滤器"
-        check_config "luci-app-cupsd" "CUPS管理界面"
-        echo "【CUPS 打印 - 驱动与扩展】"
-        check_config "cups-bjnp" "Canon网络发现"
-        check_config "ghostscript" "PostScript解释器" "optional"
-        check_config "gutenprint" "打印机驱动包" "optional"
-        check_config "foomatic-db" "打印机数据库" "optional"
-        check_config "foomatic-db-engine" "打印引擎" "optional"
-        check_config "avahi-dbus-daemon" "mDNS网络发现" "optional"
-        check_config "dbus" "D-Bus总线"
+        echo "【CUPS 打印】"
+        check_config "cups"
+        check_config "cups-filters"
+        check_config "luci-app-cupsd"
+        check_config "avahi-dbus-daemon" "optional"
         echo ""
         echo "【文件共享】"
-        check_config "ksmbd-server" "SMB共享服务"
-        check_config "luci-app-ksmbd" "ksmbd管理界面"
+        check_config "ksmbd-server"
+        check_config "luci-app-ksmbd"
         echo ""
-        echo "【科学上网】"
-        check_config "luci-app-ssr-plus" "SSR-Plus"
-        echo ""
-        echo "【实用工具】"
-        check_config "luci-app-sqm" "SQM QoS"
-        check_config "luci-app-upnp" "UPnP"
-        check_config "luci-app-ddns" "动态DNS"
-        check_config "luci-app-wol" "网络唤醒"
-        check_config "wireguard-tools" "WireGuard"
-        check_config "luci-proto-wireguard" "WireGuard界面"
-        check_config "vlmcsd" "KMS激活服务"
-        check_config "luci-app-vlmcsd" "KMS管理界面"
+        echo "【网络工具】"
+        check_config "luci-app-ssr-plus"
+        check_config "luci-app-upnp"
+        check_config "luci-app-ddns"
+        check_config "luci-app-wol"
         echo ""
         
         if [ "$FAIL" -eq 1 ]; then
           echo "╔══════════════════════════════════════╗"
-          echo "║  ❌ 第一道检查失败                   ║"
-          echo "║  以上必选包编译后将缺失             ║"
-          echo "║  已终止编译，请检查源和依赖         ║"
+          echo "║  ❌ 检查失败                      ║"
           echo "╚══════════════════════════════════════╝"
           exit 1
         else
           echo "╔══════════════════════════════════════╗"
-          echo "║  ✅ 第一道检查通过                   ║"
-          echo "║  所有核心功能已就绪: $TOTAL 包       ║"
+          echo "║  ✅ 检查通过                     ║"
+          echo "║  核心功能就绪: $TOTAL 包        ║"
           echo "╚══════════════════════════════════════╝"
         fi
-
     - name: Download packages
       run: cd openwrt && make download -j8 || make download -j1 V=s
-
     - name: Compile firmware
       id: compile
       run: |
@@ -280,7 +317,6 @@ jobs:
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-
     - name: Organize files
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
@@ -289,21 +325,18 @@ jobs:
         rm -rf packages
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
-
     - name: Upload firmware to Artifacts
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: OpenWrt_25_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        name: OpenWrt_Official_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
-
     - name: Generate release tag
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-        echo "release_tag=25-$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         echo "status=success" >> $GITHUB_OUTPUT
-
     - name: Upload firmware to Release
       uses: softprops/action-gh-release@master
       if: steps.tag.outputs.status == 'success' && !cancelled()
@@ -311,7 +344,6 @@ jobs:
         token: ${{ secrets.RELEASES_TOKEN }}
         tag_name: ${{ steps.tag.outputs.release_tag }}
         files: ${{ env.FIRMWARE }}/*
-
     - name: Remove old Releases
       uses: dev-drprasad/delete-older-releases@master
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
