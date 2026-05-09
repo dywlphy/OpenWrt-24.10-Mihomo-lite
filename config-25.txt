@@ -10,28 +10,46 @@
 # - 2026-05-07：rootfs 扩大到 512MB（CUPS 全家桶体积大）
 # ============================================================
 
+# ---- 目标平台 ----
 CONFIG_TARGET_x86=y
 CONFIG_TARGET_x86_64=y
-CONFIG_TARGET_ROOTFS_SQUASHFS=y
-CONFIG_GRUB_EFI_IMAGES=y
+CONFIG_TARGET_x86_64_DEVICE_generic=y
+# ---- 镜像格式 ----
+CONFIG_TARGET_IMAGES_GZIP=y
+CONFIG_TARGET_SQUASHFS=y
+# ---- GRUB 引导 ----
 CONFIG_GRUB_TIMEOUT=0
 CONFIG_GRUB_TIMEOUT_MINIMUM=0
-
-# 分区大小
-CONFIG_TARGET_KERNEL_PARTSIZE=32
+# ---- RootFS 大小 ----
 CONFIG_TARGET_ROOTFS_PARTSIZE=512
-
-# ============================================
-# LuCI 核心依赖 - 修复 "Unhandled exception" 报错
-# ============================================
+# ============================================================
+# LuCI 界面
+# ============================================================
 CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_luci-ssl=y
+# LuCI 核心模块
 CONFIG_PACKAGE_luci-base=y
 CONFIG_PACKAGE_luci-mod-admin-full=y
 CONFIG_PACKAGE_luci-mod-network=y
 CONFIG_PACKAGE_luci-mod-status=y
 CONFIG_PACKAGE_luci-mod-system=y
-
-# rpcd 和 uhttpd 必须
+# LuCI 主题
+CONFIG_PACKAGE_luci-theme-bootstrap=y
+# LuCI 中文语言包（所有已安装模块的翻译包）
+CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-opkg-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-attendedsysupgrade-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-wireguard-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-upnp-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-ddns-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-sqm-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-wol-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-nft-qos-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-ssr-plus-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-cupsd-zh-cn=y
+# LuCI 运行时依赖
 CONFIG_PACKAGE_rpcd=y
 CONFIG_PACKAGE_rpcd-mod-file=y
 CONFIG_PACKAGE_rpcd-mod-iwinfo=y
@@ -39,8 +57,7 @@ CONFIG_PACKAGE_rpcd-mod-rpcsys=y
 CONFIG_PACKAGE_rpcd-mod-rrdns=y
 CONFIG_PACKAGE_uhttpd=y
 CONFIG_PACKAGE_uhttpd-mod-ubus=y
-
-# ucode 支持
+CONFIG_PACKAGE_cgi-io=y
 CONFIG_PACKAGE_ucode=y
 CONFIG_PACKAGE_ucode-mod-fs=y
 CONFIG_PACKAGE_ucode-mod-math=y
@@ -48,139 +65,84 @@ CONFIG_PACKAGE_ucode-mod-nl80211=y
 CONFIG_PACKAGE_ucode-mod-resolv=y
 CONFIG_PACKAGE_ucode-mod-ubus=y
 CONFIG_PACKAGE_ucode-mod-uci=y
-
-# CGI 支持
-CONFIG_PACKAGE_cgi-io=y
-
-# 主题
-CONFIG_PACKAGE_luci-theme-bootstrap=y
-CONFIG_PACKAGE_luci-light=y
-
-# 中文语言包
-CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
-CONFIG_PACKAGE_luci-ssl=y
-
-# ============================================
-# 基础系统
-# ============================================
-CONFIG_PACKAGE_block-mount=y
-CONFIG_PACKAGE_openssh-sftp-server=y
-
-# USB 和打印机内核模块
-CONFIG_PACKAGE_kmod-usb-core=y
-CONFIG_PACKAGE_kmod-usb-storage=y
-CONFIG_PACKAGE_kmod-usb-printer=y
-CONFIG_PACKAGE_kmod-usb3=y
-CONFIG_PACKAGE_kmod-fs-ext4=y
-CONFIG_PACKAGE_kmod-fs-ntfs=y
-
-# 基础网络
-CONFIG_PACKAGE_dnsmasq-full=y
-CONFIG_PACKAGE_firewall4=y
-CONFIG_PACKAGE_nftables=y
-CONFIG_PACKAGE_odhcpd=y
-CONFIG_PACKAGE_luci-proto-ipv6=y
-CONFIG_PACKAGE_miniupnpd=y
-CONFIG_PACKAGE_luci-app-upnp=y
-CONFIG_PACKAGE_ddns-scripts=y
-CONFIG_PACKAGE_luci-app-ddns=y
-
-# 上网时间控制 + 网络唤醒
-CONFIG_PACKAGE_luci-app-nft-qos=y
-CONFIG_PACKAGE_luci-app-wol=y
-
-# 监控 + 轻量广告过滤
-CONFIG_PACKAGE_luci-app-statistics=y
-CONFIG_PACKAGE_curl=y
-CONFIG_PACKAGE_luci-app-adblock=y
-
-# ============================================
-# CUPS 打印系统
-# ============================================
-# 基础图形库
-CONFIG_PACKAGE_libjpeg-turbo=y
-CONFIG_PACKAGE_libpng=y
-CONFIG_PACKAGE_freetype=y
-CONFIG_PACKAGE_fontconfig=y
-CONFIG_PACKAGE_libtiff=y
-CONFIG_PACKAGE_lcms2=y
-CONFIG_PACKAGE_expat=y
-CONFIG_PACKAGE_gnutls=y
-CONFIG_PACKAGE_libusb-1_0=y
-
-# CUPS 核心
+# ============================================================
+# CUPS 打印系统（printing 源）
+# ============================================================
 CONFIG_PACKAGE_cups=y
-CONFIG_PACKAGE_cups-filters=y
-
-# CUPS 扩展
 CONFIG_PACKAGE_cups-bjnp=y
-CONFIG_PACKAGE_ghostscript=y
-CONFIG_PACKAGE_gutenprint=y
-CONFIG_PACKAGE_foomatic-db=y
-CONFIG_PACKAGE_foomatic-db-engine=y
-
-# 网络发现
+# CONFIG_PACKAGE_ghostscript is not set
+CONFIG_PACKAGE_openprinting-cups-filters=y
+# CUPS LuCI 管理（smpackage 源）
+CONFIG_PACKAGE_luci-app-cupsd=y
+# 打印机发现服务
 CONFIG_PACKAGE_avahi-dbus-daemon=y
 CONFIG_PACKAGE_dbus=y
-
-# CUPS 管理界面
-CONFIG_PACKAGE_luci-app-cupsd=y
-
-# ============================================
-# ksmbd 局域网共享
-# ============================================
-CONFIG_PACKAGE_luci-app-ksmbd=y
-CONFIG_PACKAGE_ksmbd-server=y
-CONFIG_PACKAGE_kmod-fs-ksmbd=y
-
-# ============================================
-# SSR-Plus（由 small 源提供）
-# ============================================
-# 注意：已禁用 MosDNS（Go 版本不兼容）
+# USB 打印机内核支持
+CONFIG_PACKAGE_kmod-usb-printer=y
+# ============================================================
+# 文件共享
+# ============================================================
+CONFIG_PACKAGE_ksmbd=y
+CONFIG_PACKAGE_ksmbd-utils=y
+# ============================================================
+# 代理工具（helloworld 源）
+# ============================================================
 CONFIG_PACKAGE_luci-app-ssr-plus=y
-CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Xray=y
-# CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_MosDNS is not set
-
-# ============================================
-# 实用工具
-# ============================================
+CONFIG_PACKAGE_xray-core=y
+# ============================================================
+# 网络工具
+# ============================================================
+# WireGuard VPN
+CONFIG_PACKAGE_luci-app-wireguard=y
+CONFIG_PACKAGE_wireguard-tools=y
+# UPnP
+CONFIG_PACKAGE_miniupnpd=y
+CONFIG_PACKAGE_luci-app-upnp=y
+# DDNS
+CONFIG_PACKAGE_ddns-scripts=y
+CONFIG_PACKAGE_luci-app-ddns=y
+# SQM QoS
+CONFIG_PACKAGE_sqm-scripts=y
+CONFIG_PACKAGE_luci-app-sqm=y
+# Wake-on-LAN
+CONFIG_PACKAGE_luci-app-wol=y
+# Nftables QoS
+CONFIG_PACKAGE_luci-app-nft-qos=y
+# ============================================================
+# 维护工具
+# ============================================================
+CONFIG_PACKAGE_luci-app-ttyd=y
+CONFIG_PACKAGE_luci-app-attendedsysupgrade=y
+# ============================================================
+# 命令行工具
+# ============================================================
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_bash=y
+CONFIG_PACKAGE_vlmcsd=y
+CONFIG_PACKAGE_htop=y
+CONFIG_PACKAGE_iperf3=y
 CONFIG_PACKAGE_cfdisk=y
 CONFIG_PACKAGE_e2fsprogs=y
-CONFIG_PACKAGE_bash=y
-
-# 远程接入
-CONFIG_PACKAGE_kmod-wireguard=y
-CONFIG_PACKAGE_wireguard-tools=y
-CONFIG_PACKAGE_luci-proto-wireguard=y
-
-# 系统维护
-CONFIG_PACKAGE_luci-app-autoreboot=y
-CONFIG_PACKAGE_luci-app-watchcat=y
-CONFIG_PACKAGE_luci-app-commands=y
-
-# 网络工具
-CONFIG_PACKAGE_luci-app-sqm=y
-CONFIG_PACKAGE_iperf3=y
-
-# 监控与统计
-CONFIG_PACKAGE_luci-app-nlbwmon=y
-CONFIG_PACKAGE_htop=y
-
-# 打印与磁盘管理
-CONFIG_PACKAGE_luci-app-usb-printer=y
-CONFIG_PACKAGE_luci-app-diskman=y
-
-# KMS 激活
-CONFIG_PACKAGE_vlmcsd=y
-CONFIG_PACKAGE_luci-app-vlmcsd=y
-
-# ============================================
-# 显式禁用冲突变体
-# ============================================
-# CONFIG_PACKAGE_dnsmasq is not set
-# CONFIG_PACKAGE_odhcpd-ipv6only is not set
-
-# ============================================
-# 排除编译失败的 Go 版本不兼容包
-# ============================================
+# ============================================================
+# 打印机驱动（brlaser + hplip-ppds）
+# ============================================================
+CONFIG_PACKAGE_brlaser=y
+CONFIG_PACKAGE_hplip-ppds=y
+CONFIG_PACKAGE_ghostscript=y
+# ============================================================
+# 基础库依赖（修复 libz.so.1 缺失错误）
+# ============================================================
+CONFIG_PACKAGE_zlib=y
+CONFIG_PACKAGE_libcups=y
+CONFIG_PACKAGE_libpng=y
+CONFIG_PACKAGE_libjpeg=y
+CONFIG_PACKAGE_libtiff=y
+# 明确禁用有问题的包
+# CONFIG_PACKAGE_gutenprint is not set
+# CONFIG_PACKAGE_foomatic-db is not set
+# CONFIG_PACKAGE_foomatic-db-engine is not set
+# ============================================================
+# 禁用不需要的包
+# ============================================================
+# mosdns Go 版本不兼容
 # CONFIG_PACKAGE_mosdns is not set
