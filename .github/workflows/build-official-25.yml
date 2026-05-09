@@ -1,5 +1,5 @@
 # ============================================================
-# OpenWrt 官方 25.10 稳定版编译
+# OpenWrt 官方 25.12 稳定版编译
 # 核心：CUPS + SSR-Plus + ksmbd + 中文界面
 # ============================================================
 
@@ -33,9 +33,9 @@ jobs:
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone Asia/Shanghai
 
-    - name: Clone OpenWrt 25.10
+    - name: Clone OpenWrt 25.12
       run: |
-        git clone https://github.com/openwrt/openwrt -b openwrt-25.10 openwrt
+        git clone https://github.com/openwrt/openwrt -b openwrt-25.12 openwrt
     - name: Load custom feeds and config
       run: |
         [ -f config.txt ] && cp config.txt openwrt/.config
