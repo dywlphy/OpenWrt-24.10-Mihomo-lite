@@ -171,6 +171,7 @@ jobs:
         # enable_pkg "libtiff"
         enable_pkg "libstdcpp"
         enable_pkg "libusb-1.0"
+        enable_pkg "libdbus"
         enable_pkg "libexpat"          # ← dbus 依赖
         enable_pkg "kmod-usb-printer"
         echo "【强制启用核心功能包】"
