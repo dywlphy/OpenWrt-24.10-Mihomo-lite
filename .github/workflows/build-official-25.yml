@@ -1,15 +1,9 @@
 # ============================================================
-# OpenWrt 25 稳定版编译
-# 核心：CUPS + SSR-Plus + ksmbd
-# 
-# 修复记录：
-# - 2026-05-07：添加完整 LuCI 核心依赖（修复界面报错）
-# - 2026-05-07：修复 GRUB 超时配置为 0 秒
-# - 2026-05-07：添加 openwrt-cups 源（ghostscript, gutenprint, foomatic）
-# - 2026-05-07：添加 immortalwrt 源
+# OpenWrt 官方 25.10 稳定版编译
+# 核心：CUPS + SSR-Plus + ksmbd + 中文界面
 # ============================================================
 
-name: Build OpenWrt 25
+name: Build Official OpenWrt
 
 on:
   workflow_dispatch:
@@ -39,25 +33,25 @@ jobs:
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone Asia/Shanghai
 
-    - name: Clone OpenWrt 25.12
+    - name: Clone OpenWrt 25.10
       run: |
-        git clone https://github.com/openwrt/openwrt -b openwrt-25.12 openwrt
+        git clone https://github.com/openwrt/openwrt -b openwrt-25.10 openwrt
     - name: Load custom feeds and config
       run: |
         [ -f config.txt ] && cp config.txt openwrt/.config
-        [ -f diy-part1-25.sh ] && cp diy-part1-25.sh openwrt/
-        [ -f diy-part2-25.sh ] && cp diy-part2-25.sh openwrt/
-        chmod +x openwrt/diy-part1-25.sh openwrt/diy-part2-25.sh 2>/dev/null || true
+        [ -f diy-part1.sh ] && cp diy-part1.sh openwrt/
+        [ -f diy-part2.sh ] && cp diy-part2.sh openwrt/
+        chmod +x openwrt/diy-part1.sh openwrt/diy-part2.sh 2>/dev/null || true
         cd openwrt
-        ./diy-part1-25.sh
+        ./diy-part1.sh
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
-    - name: Run diy-part2-25.sh
+    - name: Run diy-part2.sh
       run: |
         cd openwrt
-        ./diy-part2-25.sh
+        ./diy-part2.sh
     - name: Remove conflicting packages
       run: |
         cd openwrt
@@ -155,7 +149,10 @@ jobs:
         enable_pkg "libcups"
         enable_pkg "libpng"
         enable_pkg "libjpeg"
-        enable_pkg "libtiff"
+        # enable_pkg "libtiff"
+        enable_pkg "libstdcpp"
+        enable_pkg "libusb-1.0"
+        enable_pkg "kmod-usb-printer"
         echo "【强制启用核心功能包】"
         enable_pkg "cups"
         enable_pkg "cups-filters"
@@ -187,172 +184,4 @@ jobs:
         echo "CONFIG_GRUB_TIMEOUT=0" >> .config
         echo "==========================="
         # make defconfig
-    - name: Debug Print all Chinese packages in config
-      run: |
-        cd openwrt
-        echo ""
-        echo "╔══════════════════════════════════════╗"
-        echo "║  📋 .config 中所有中文包          ║"
-        echo "╚══════════════════════════════════════╝"
-        echo ""
-        grep "^CONFIG_PACKAGE_luci-i18n" .config | sed 's/^/  /' || echo "  (无中文包配置)"
-        echo ""
-    - name: Check Chinese packages in config
-      run: |
-        cd openwrt
-        
-        echo ""
-        echo "╔══════════════════════════════════════╗"
-        echo "║  🔍 检查中文包是否写入 .config  ║"
-        echo "╚══════════════════════════════════════╝"
-        echo ""
-        
-        FAIL=0
-        
-        check_i18n_config() {
-          local pkg="$1"
-          if grep -q "^CONFIG_PACKAGE_${pkg}=y" .config 2>/dev/null; then
-            echo "  ✅ ${pkg}"
-            return 0
-          else
-            echo "  ❌ ${pkg} 未启用"
-            FAIL=1
-            return 1
-          fi
-        }
-        
-        check_i18n_config "luci-i18n-base-zh-cn"
-        check_i18n_config "luci-i18n-firewall-zh-cn"
-        check_i18n_config "luci-i18n-opkg-zh-cn"
-        
-        echo ""
-        
-        if [ "$FAIL" -eq 1 ]; then
-          echo "╔══════════════════════════════════════╗"
-          echo "║  ❌ 中文包未写入 .config        ║"
-          echo "║  编译将无法生成中文界面       ║"
-          echo "║  已终止编译                     ║"
-          echo "╚══════════════════════════════════════╝"
-          exit 1
-        else
-          echo "╔══════════════════════════════════════╗"
-          echo "║  ✅ 中文包已写入 .config       ║"
-          echo "║  固件将包含中文界面           ║"
-          echo "╚══════════════════════════════════════╝"
-        fi
-    - name: Verify package requirements
-      run: |
-        cd openwrt
-        
-        echo ""
-        echo "╔══════════════════════════════════════╗"
-        echo "║  🔍 依赖链完整性检查            ║"
-        echo "╚══════════════════════════════════════╝"
-        echo ""
-        
-        TOTAL=$(grep -c "^CONFIG_PACKAGE_.*=y" .config)
-        echo "  已解析的包总数: $TOTAL"
-        echo ""
-        
-        FAIL=0
-        
-        check_config() {
-          local name="$1"
-          local desc="${2:-}"
-          local required="${3:-yes}"
-          if grep -q "^CONFIG_PACKAGE_${name}=y" .config 2>/dev/null; then
-            echo "  ✅ $name ${desc:+($desc)}"
-            return 0
-          fi
-          if [ "$required" = "yes" ]; then
-            echo "  ❌ $name ${desc:+($desc)}"
-            FAIL=1
-          else
-            echo "  ⚠️  $name ${desc:+($desc)} - 可选"
-          fi
-          return 0
-        }
-        
-        echo "【LuCI 核心】"
-        check_config "luci-base"
-        check_config "luci-mod-admin-full"
-        check_config "rpcd"
-        check_config "rpcd-mod-file"
-        check_config "uhttpd"
-        check_config "luci-theme-bootstrap"
-        echo ""
-        echo "【CUPS 打印】"
-        check_config "cups"
-        check_config "cups-filters"
-        check_config "luci-app-cupsd"
-        check_config "avahi-dbus-daemon" "optional"
-        echo ""
-        echo "【文件共享】"
-        check_config "ksmbd-server"
-        check_config "luci-app-ksmbd"
-        echo ""
-        echo "【网络工具】"
-        check_config "luci-app-ssr-plus"
-        check_config "luci-app-upnp"
-        check_config "luci-app-ddns"
-        check_config "luci-app-wol"
-        echo ""
-        
-        if [ "$FAIL" -eq 1 ]; then
-          echo "╔══════════════════════════════════════╗"
-          echo "║  ❌ 检查失败                      ║"
-          echo "╚══════════════════════════════════════╝"
-          exit 1
-        else
-          echo "╔══════════════════════════════════════╗"
-          echo "║  ✅ 检查通过                     ║"
-          echo "║  核心功能就绪: $TOTAL 包        ║"
-          echo "╚══════════════════════════════════════╝"
-        fi
-    - name: Download packages
-      run: cd openwrt && make download -j8 || make download -j1 V=s
-    - name: Compile firmware
-      id: compile
-      run: |
-        cd openwrt
-        echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j8 || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
-        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
-        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-    - name: Organize files
-      id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
-      run: |
-        cd openwrt/bin/targets/*/*
-        rm -rf packages
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_OUTPUT
-    - name: Upload firmware to Artifacts
-      uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
-      with:
-        name: OpenWrt_Official_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
-    - name: Generate release tag
-      id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        echo "status=success" >> $GITHUB_OUTPUT
-    - name: Upload firmware to Release
-      uses: softprops/action-gh-release@master
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      with:
-        token: ${{ secrets.RELEASES_TOKEN }}
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        files: ${{ env.FIRMWARE }}/*
-    - name: Remove old Releases
-      uses: dev-drprasad/delete-older-releases@master
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
-        keep_latest: 3
-        delete_tags: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+    - name: Debug Print all Chinese packages
