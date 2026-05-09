@@ -41,7 +41,7 @@ jobs:
 
     - name: Clone OpenWrt 24.10
       run: |
-        git clone https://github.com/openwrt/openwrt -b openwrt-24.10 openwrt
+        git clone https://github.com/openwrt/openwrt -b openwrt-25.12 openwrt
     - name: Load custom feeds and config
       run: |
         [ -f config.txt ] && cp config.txt openwrt/.config
