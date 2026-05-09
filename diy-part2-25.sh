@@ -15,7 +15,13 @@ done
 
 # ----- 修复 cups-bjnp Makefile 路径错误 -----
 echo "===== 修复 cups-bjnp Makefile 路径错误 ====="
-CUPSBJNP_MK="feeds/immortalwrt/utils/cups-bjnp/Makefile"
+CUPSBJNP_MK=$(find feeds -name "cups-bjnp" -type d 2>/dev/null | head -1)/Makefile
+if [ -f "$CUPSBJNP_MK" ]; then
+    sed -i 's|--with-cupsbackenddir=$(STAGING_DIR)/usr/include/cups|--with-cupsbackenddir=$(STAGING_DIR)/usr/lib/cups/backend|' "$CUPSBJNP_MK"
+    echo "  ✅ 已修复 cups-bjnp cupsbackenddir 路径"
+else
+    echo "  ⚠️ 未找到 cups-bjnp Makefile，跳过修复"
+fi
 if [ -f "$CUPSBJNP_MK" ]; then
     # 修复错误的 cupsbackenddir 路径
     # 原错误路径：$(STAGING_DIR)/usr/include/cups
