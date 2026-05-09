@@ -1,43 +1,69 @@
 #!/bin/bash
 # ==========================================
-# diy-part2-25.sh - 自启动脚本 + 自动共享 + CUPS 包安装 + GRUB修复
-# OpenWrt 25 专用
+# diy-part2.sh - 自启动脚本 + 自动共享 + CUPS + GRUB修复
+# OpenWrt 25.10 专用
 # ==========================================
 
-# ----- 修复 GRUB 超时为 0 秒 -----
+# ==========================================
+# 1. 修复 GRUB 超时为 0 秒
+# ==========================================
 echo "===== 修复 GRUB 超时为 0 秒 ====="
 for cfg in target/linux/x86/image/grub-efi.cfg target/linux/x86/image/grub-pc.cfg target/linux/x86/image/grub-iso.cfg; do
     if [ -f "$cfg" ]; then
         sed -i 's/^set timeout=.*/set timeout=0/' "$cfg"
-        echo "  ✅ 已修改 $(basename $cfg): timeout=0"
+        echo "  ✅ $(basename $cfg): timeout=0"
     fi
 done
 
-# ----- 修复 cups-bjnp Makefile 路径错误 -----
-echo "===== 修复 cups-bjnp Makefile 路径错误 ====="
-CUPSBJNP_MK=$(find feeds -name "cups-bjnp" -type d 2>/dev/null | head -1)/Makefile
-if [ -f "$CUPSBJNP_MK" ]; then
-    sed -i 's|--with-cupsbackenddir=$(STAGING_DIR)/usr/include/cups|--with-cupsbackenddir=$(STAGING_DIR)/usr/lib/cups/backend|' "$CUPSBJNP_MK"
-    echo "  ✅ 已修复 cups-bjnp cupsbackenddir 路径"
-else
-    echo "  ⚠️ 未找到 cups-bjnp Makefile，跳过修复"
-fi
-if [ -f "$CUPSBJNP_MK" ]; then
-    # 修复错误的 cupsbackenddir 路径
-    # 原错误路径：$(STAGING_DIR)/usr/include/cups
-    # 正确路径：$(STAGING_DIR)/usr/lib/cups/backend
-    sed -i 's|--with-cupsbackenddir=$(STAGING_DIR)/usr/include/cups|--with-cupsbackenddir=$(STAGING_DIR)/usr/lib/cups/backend|' "$CUPSBJNP_MK"
-    echo "  ✅ 已修复 cups-bjnp cupsbackenddir 路径"
-else
-    echo "  ⚠️ 未找到 cups-bjnp Makefile，跳过修复"
+# ==========================================
+# 2. 修复 Makefile 问题
+# ==========================================
+echo "===== 修复 Makefile 问题 ====="
+
+# 修复 tiff
+TIFF_MK=$(find feeds -name "tiff" -type d 2>/dev/null | head -1)/Makefile
+if [ -f "$TIFF_MK" ]; then
+    sed -i 's/--enable-webp/--disable-webp/g' "$TIFF_MK"
+    echo "  ✅ tiff Makefile 已修复"
 fi
 
-# ----- 创建自启动目录 -----
-mkdir -p files/etc/init.d files/etc/rc.d
+# 修复 curl
+CURL_MK=$(find feeds -name "curl" -type d 2>/dev/null | head -1)/Makefile
+if [ -f "$CURL_MK" ]; then
+    sed -i 's/--enable-debug/--disable-debug/g' "$CURL_MK"
+    echo "  ✅ curl Makefile 已修复"
+fi
 
-# ----- 创建 AirPrint 服务文件（avahi）-----
-echo "===== 创建 AirPrint 服务文件 ====="
-mkdir -p files/etc/avahi/services
+# 修复 cups-bjnp（锁死在 immortalwrt 源）
+CUPSBJNP_MK="feeds/immortalwrt/utils/cups-bjnp/Makefile"
+if [ -f "$CUPSBJNP_MK" ]; then
+    sed -i 's|--with-cupsbackenddir=$(STAGING_DIR)/usr/include/cups|--with-cupsbackenddir=$(STAGING_DIR)/usr/lib/cups/backend|' "$CUPSBJNP_MK"
+    echo "  ✅ cups-bjnp Makefile 已修复"
+else
+    echo "  ⚠️ 未找到 cups-bjnp Makefile"
+fi
+
+# 修复 ghostscript
+GS_MAKEFILE=$(find feeds -name "ghostscript" -type d 2>/dev/null | head -1)/Makefile
+if [ -f "$GS_MAKEFILE" ]; then
+    sed -i 's/--enable-cups/--with-install-cups/g' "$GS_MAKEFILE"
+    echo "  🔧 ghostscript Makefile 已修复"
+fi
+
+# 修复 cups Makefile（锁死在 smpackage 源）
+CUPS_MK="feeds/smpackage/cups/Makefile"
+if [ -f "$CUPS_MK" ]; then
+    sed -i 's/DEPENDS:=/DEPENDS:=+libusb-1.0 +libstdcpp /' "$CUPS_MK"
+    echo "  ✅ cups Makefile 已修复"
+fi
+
+# ==========================================
+# 3. 创建目录和文件
+# ==========================================
+echo "===== 创建目录和文件 ====="
+mkdir -p files/etc/init.d files/etc/rc.d files/etc/avahi/services
+
+# AirPrint 服务文件
 cat > files/etc/avahi/services/cups.service << 'EOF'
 <?xml version="1.0" standalone='no'?>
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
@@ -60,7 +86,10 @@ EOF
 chmod 644 files/etc/avahi/services/cups.service
 echo "  ✅ AirPrint 服务文件已创建"
 
-# ----- 服务自启动脚本 -----
+# ==========================================
+# 4. 服务自启动脚本
+# ==========================================
+echo "===== 创建服务自启动脚本 ====="
 cat > files/etc/init.d/custom-autostart << 'EOF'
 #!/bin/sh /etc/rc.common
 START=99
@@ -74,7 +103,12 @@ start() {
 EOF
 chmod +x files/etc/init.d/custom-autostart
 ln -sf ../init.d/custom-autostart files/etc/rc.d/S99custom-autostart
-# ----- 自动共享脚本 -----
+echo "  ✅ 服务自启动脚本已创建"
+
+# ==========================================
+# 5. 自动共享脚本
+# ==========================================
+echo "===== 创建自动共享脚本 ====="
 cat > files/etc/init.d/auto-share-init << 'EOF'
 #!/bin/sh /etc/rc.common
 START=98
@@ -137,7 +171,7 @@ start() {
     SHARE_MB=$((use_kb / 1024))
     echo "自动共享配置完成！" > "$SHARE_DIR/README.txt"
     echo "分区：$BEST_PART (总容量约 ${TOTAL_MB}MB)" >> "$SHARE_DIR/README.txt"
-    echo "类型：$([ "$IS_SYSTEM_PART" -eq 0 ] && echo '外部存储' || echo '系统分区（未检测到外部存储，降级使用）')" >> "$SHARE_DIR/README.txt"
+    echo "类型：$([ "$IS_SYSTEM_PART" -eq 0 ] && echo '外部存储' || echo '系统分区')" >> "$SHARE_DIR/README.txt"
     echo "共享空间上限(60%剩余空间)：${SHARE_MB}MB" >> "$SHARE_DIR/README.txt"
     echo "自动共享初始化完成：$SHARE_DIR"
 }
@@ -147,8 +181,10 @@ stop() {
 EOF
 chmod +x files/etc/init.d/auto-share-init
 ln -sf ../init.d/auto-share-init files/etc/rc.d/S98auto-share-init
+echo "  ✅ 自动共享脚本已创建"
+
 # ==========================================
-# 安装中文语言包（关键修复）
+# 6. 安装中文语言包
 # ==========================================
 echo "===== 安装中文语言包 ====="
 ./scripts/feeds install luci-i18n-base-zh-cn && echo "  ✅ luci-i18n-base-zh-cn 安装成功" || echo "  ⚠️ luci-i18n-base-zh-cn 安装失败"
@@ -164,70 +200,43 @@ echo "===== 安装中文语言包 ====="
 ./scripts/feeds install luci-i18n-ttyd-zh-cn && echo "  ✅ luci-i18n-ttyd-zh-cn 安装成功" || echo "  ⚠️ luci-i18n-ttyd-zh-cn 安装失败"
 
 # ==========================================
-# CUPS 相关包安装
+# 7. 安装 CUPS 相关包
 # ==========================================
 echo "===== 安装 CUPS 相关包 ====="
 echo "从 openwrt-cups 源安装打印驱动包..."
-
-# +++ 修改点 1：修复 ghostscript 编译参数（在安装前修复）+++
-# 查找并修复 ghostscript Makefile
-GS_MAKEFILE=$(find feeds -name "ghostscript" -type d 2>/dev/null | head -1)/Makefile
-if [ -f "$GS_MAKEFILE" ]; then
-    sed -i 's/--enable-cups/--with-install-cups/g' "$GS_MAKEFILE"
-    echo "  🔧 ghostscript Makefile 已修复"
-fi
-
 ./scripts/feeds install -f -p cups ghostscript && echo "  ✅ ghostscript 安装成功" || echo "  ⚠️ ghostscript 安装失败"
-
-# +++ 修改点 2：如果 ghostscript 安装失败，尝试二次修复 +++
-if ! grep -q "CONFIG_PACKAGE_ghostscript=y" .config 2>/dev/null; then
-    echo "  🔧 尝试二次修复 ghostscript..."
-    GS_MAKEFILE=$(find feeds -name "ghostscript" -type d 2>/dev/null | head -1)/Makefile
-    if [ -f "$GS_MAKEFILE" ]; then
-        sed -i 's/--enable-cups/--with-install-cups/g' "$GS_MAKEFILE"
-        ./scripts/feeds install -f -p cups ghostscript 2>/dev/null
-    fi
-fi
-
-./scripts/feeds install -f -p cups gutenprint 2>/dev/null && echo "  ✅ gutenprint 安装成功" || echo "  ⚠️ gutenprint 安装失败"
-./scripts/feeds install -f -p cups foomatic-db 2>/dev/null && echo "  ✅ foomatic-db 安装成功" || echo "  ⚠️ foomatic-db 安装失败"
-./scripts/feeds install -f -p cups foomatic-db-engine 2>/dev/null && echo "  ✅ foomatic-db-engine 安装成功" || echo "  ⚠️ foomatic-db-engine 安装失败"
+./scripts/feeds install -f -p cups gutenprint && echo "  ✅ gutenprint 安装成功" || echo "  ⚠️ gutenprint 安装失败"
+./scripts/feeds install -f -p cups foomatic-db && echo "  ✅ foomatic-db 安装成功" || echo "  ⚠️ foomatic-db 安装失败"
+./scripts/feeds install -f -p cups foomatic-db-engine && echo "  ✅ foomatic-db-engine 安装成功" || echo "  ⚠️ foomatic-db-engine 安装失败"
 echo "从 immortalwrt 源安装扩展包..."
-./scripts/feeds install -f -p immortalwrt cups-bjnp 2>/dev/null && echo "  ✅ cups-bjnp 安装成功" || echo "  ⚠️ cups-bjnp 安装失败"
+./scripts/feeds install -f -p immortalwrt cups-bjnp && echo "  ✅ cups-bjnp 安装成功" || echo "  ⚠️ cups-bjnp 安装失败"
 echo "从 smpackage 源安装 CUPS 核心包..."
-./scripts/feeds install -f -p smpackage cups cups-filters dbus luci-app-cupsd 2>/dev/null && echo "  ✅ CUPS 核心包安装成功" || echo "  ⚠️ CUPS 核心包安装失败"
+./scripts/feeds install -f -p smpackage cups cups-filters dbus luci-app-cupsd && echo "  ✅ CUPS 核心包安装成功" || echo "  ⚠️ CUPS 核心包安装失败"
 echo "从官方源安装 avahi..."
-./scripts/feeds install avahi-dbus-daemon 2>/dev/null && echo "  ✅ avahi-dbus-daemon 安装成功" || {
-    ./scripts/feeds install avahi-nodbus-daemon 2>/dev/null && echo "  ✅ avahi-nodbus-daemon 安装成功" || echo "  ⚠️ avahi 安装失败"
+./scripts/feeds install avahi-dbus-daemon && echo "  ✅ avahi-dbus-daemon 安装成功" || {
+    ./scripts/feeds install avahi-nodbus-daemon && echo "  ✅ avahi-nodbus-daemon 安装成功" || echo "  ⚠️ avahi 安装失败"
 }
 
-# 从 brlaser 源安装 Brother 驱动
+# ==========================================
+# 8. 安装打印机驱动
+# ==========================================
 echo "===== 安装 Brother 打印机驱动 ====="
 if ./scripts/feeds update brlaser; then
     echo "  ✅ brlaser feed 更新成功"
-    if ./scripts/feeds install brlaser; then
-        echo "  ✅ brlaser 驱动安装成功"
-    else
-        echo "  ❌ brlaser 驱动安装失败"
-        exit 1
-    fi
+    ./scripts/feeds install brlaser && echo "  ✅ brlaser 驱动安装成功" || echo "  ❌ brlaser 驱动安装失败"
 else
     echo "  ❌ brlaser feed 更新失败"
-    exit 1
 fi
 
-# 安装 HP 打印机驱动
 echo "===== 安装 HP 打印机驱动 ====="
-if ./scripts/feeds install -f -p cups hplip-ppds 2>/dev/null; then
-    echo "  ✅ hplip-ppds 安装成功"
-else
-    echo "  ❌ hplip-ppds 安装失败"
-    exit 1
-fi
-# +++ 追加：强制启用打印机驱动配置 +++
+./scripts/feeds install -f -p cups hplip-ppds && echo "  ✅ hplip-ppds 安装成功" || echo "  ❌ hplip-ppds 安装失败"
+
+# ==========================================
+# 9. 强制启用驱动配置
+# ==========================================
 echo "===== 强制启用驱动配置 ====="
 echo "CONFIG_PACKAGE_brlaser=y" >> .config
 echo "CONFIG_PACKAGE_hplip-ppds=y" >> .config
 echo "CONFIG_PACKAGE_ghostscript=y" >> .config
 
-echo "✅ diy-part2-25.sh 执行完成"
+echo "✅ diy-part2.sh 执行完成"
