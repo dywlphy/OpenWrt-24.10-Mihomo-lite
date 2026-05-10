@@ -103,27 +103,24 @@ DBUS_MK="feeds/packages/utils/dbus/Makefile"
 if [ -f "$DBUS_MK" ]; then
     # 检查是否已有 dbus-libs 子包定义
     if ! grep -q "Package/dbus-libs" "$DBUS_MK"; then
-        # 在 dbus 包定义之前插入 dbus-libs 子包
-        sed -i '/^define Package\/dbus$/,/^endef$/i \
-define Package/dbus-libs\
-  $(call Package/dbus/Default)\
-  TITLE:=D-Bus Library\
-  DEPENDS:=+libexpat\
-endef\
-\
-define Package/dbus-libs/install\
-  $(INSTALL_DIR) $(1)/usr/lib\
-  $(CP) $(PKG_INSTALL_DIR)/usr/lib/libdbus-1.so* $(1)/usr/lib/\
-endef\
-\
-' "$DBUS_MK"
-        # 将 dbus-libs 添加到 Build/Package 列表
-        sed -i 's/^Build/Build/' "$DBUS_MK"
-        if ! grep -q "dbus-libs" "$DBUS_MK" | grep -q "Build/Depends"; then
-            sed -i '/^PKG_CONFIG_DEPENDS/a \
-  DBUS_PROVIDES:=dbus-libs\
-' "$DBUS_MK"
-        fi
+        # 在文件末尾添加 dbus-libs 子包定义
+        cat >> "$DBUS_MK" << 'DBUS_PATCH'
+
+# ========== dbus-libs 子包（自动添加）==========
+define Package/dbus-libs
+  SECTION:=libs
+  CATEGORY:=Libraries
+  DEPENDS:=+libexpat
+  TITLE:=D-Bus library
+endef
+
+define Package/dbus-libs/install
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libdbus-1.so* $(1)/usr/lib/
+endef
+
+$(eval $(call BuildPackage,dbus-libs))
+DBUS_PATCH
         echo "  ✅ dbus Makefile 已修复（添加 dbus-libs 子包）"
     else
         echo "  ✅ dbus Makefile 已有 dbus-libs 子包"
