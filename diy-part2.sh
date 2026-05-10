@@ -98,15 +98,12 @@ if [ -f "$CUPS_MK" ]; then
     echo "  ✅ cups Makefile 已修复"
 fi
 
-# 修复 dbus Makefile - 添加缺失的子包声明
+# 修复 dbus Makefile - 添加 dbus-libs 子包
 DBUS_MK="feeds/packages/utils/dbus/Makefile"
 if [ -f "$DBUS_MK" ]; then
-    # 检查是否已有 dbus-libs 子包定义
     if ! grep -q "Package/dbus-libs" "$DBUS_MK"; then
-        # 在文件末尾添加 dbus-libs 子包定义
-        cat >> "$DBUS_MK" << 'DBUS_PATCH'
+        cat >> "$DBUS_MK" << 'EOF'
 
-# ========== dbus-libs 子包（自动添加）==========
 define Package/dbus-libs
   SECTION:=libs
   CATEGORY:=Libraries
@@ -120,10 +117,8 @@ define Package/dbus-libs/install
 endef
 
 $(eval $(call BuildPackage,dbus-libs))
-DBUS_PATCH
+EOF
         echo "  ✅ dbus Makefile 已修复（添加 dbus-libs 子包）"
-    else
-        echo "  ✅ dbus Makefile 已有 dbus-libs 子包"
     fi
 fi
 
