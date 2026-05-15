@@ -122,6 +122,37 @@ jobs:
         make download -j8
         find dl -size -1024c -exec rm -f {} \;
 
+    # CUPS 汉化集成（编译前替换源码中的模板）
+    - name: Integrate CUPS Chinese localization
+      run: |
+        cd openwrt
+        
+        if [ -f "$GITHUB_WORKSPACE/CUPS_2.3.1_zh_CN.zip" ]; then
+            echo "集成CUPS中文汉化..."
+            unzip -o $GITHUB_WORKSPACE/CUPS_2.3.1_zh_CN.zip -d /tmp/cups-zh
+            
+            # 替换 printing feed 中的 cups 模板
+            if [ -d "feeds/printing/cups" ]; then
+                # 找到 cups 源码中的 templates 目录并替换
+                for tmpl_dir in $(find feeds/printing -name "templates" -type d 2>/dev/null); do
+                    if [ -d "$tmpl_dir" ]; then
+                        cp -r /tmp/cups-zh/zh_CN/* "$tmpl_dir/" 2>/dev/null || true
+                        echo "  - 已替换: $tmpl_dir"
+                    fi
+                done
+            fi
+            
+            # 集成首页到 base-files（首页不冲突）
+            mkdir -p package/base-files/files/usr/share/cups/doc-root
+            cp /tmp/cups-zh/index.html package/base-files/files/usr/share/cups/doc-root/ 2>/dev/null || true
+            chmod -R 755 package/base-files/files/usr/share/cups/doc-root
+            
+            rm -rf /tmp/cups-zh
+            echo "CUPS汉化集成完成"
+        else
+            echo "警告: 未找到CUPS_2.3.1_zh_CN.zip，跳过汉化"
+        fi
+
     # 编译固件
     - name: Compile the firmware
       id: compile
