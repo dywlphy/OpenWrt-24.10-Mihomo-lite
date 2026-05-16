@@ -325,8 +325,8 @@ CONFIG_PACKAGE_frp=y
 CONFIG_PACKAGE_kmod-nft-fullcone=y
 
 # 禁用turboacc全套，避免影响游戏
-CONFIG_PACKAGE_turboacc is not set
-CONFIG_PACKAGE_luci-app-turboacc is not set
+# CONFIG_PACKAGE_turboacc is not set
+# CONFIG_PACKAGE_luci-app-turboacc is not set
 
 # ============================================
 # NAT类型检测工具（刷机后可测试NAT类型）
