@@ -111,6 +111,7 @@ jobs:
         find package/cups-zh-cn/files/usr/share/cups/doc-root/ -type f 2>/dev/null | wc -l
         echo ""
         echo "--- uci-defaults脚本 ---"
+        test -f package/base-files/files/etc/uci-defaults/97-timecontrol-menu && echo "OK: timecontrol菜单修复脚本存在" || echo "FAIL: timecontrol菜单修复脚本不存在"
         test -f package/base-files/files/etc/uci-defaults/98-cups-zh-cn && echo "OK: CUPS脚本存在" || echo "FAIL: CUPS脚本不存在"
         test -f package/base-files/files/etc/uci-defaults/99-grub-timeout && echo "OK: GRUB脚本存在" || echo "FAIL: GRUB脚本不存在"
         echo ""
@@ -118,6 +119,7 @@ jobs:
         test -f package/cups-zh-cn/Makefile && echo "OK: Makefile存在" || echo "FAIL: Makefile不存在"
         echo ""
         echo "--- uci-defaults脚本内容检查 ---"
+        head -3 package/base-files/files/etc/uci-defaults/97-timecontrol-menu 2>/dev/null
         head -3 package/base-files/files/etc/uci-defaults/98-cups-zh-cn 2>/dev/null
         head -3 package/base-files/files/etc/uci-defaults/99-grub-timeout 2>/dev/null
         echo ""
@@ -144,14 +146,14 @@ jobs:
         # 强制禁用dnsmasq，使用dnsmasq-full（解决冲突）
         sed -i 's/CONFIG_PACKAGE_dnsmasq=y/# CONFIG_PACKAGE_dnsmasq is not set/' .config
         sed -i 's/CONFIG_PACKAGE_dnsmasq=m/# CONFIG_PACKAGE_dnsmasq is not set/' .config
-        # 强制禁用旧版iptables fullconenat（25.12 fw4不兼容）
+        # 强制禁用旧版iptables fullconenat（fw4不兼容）
         sed -i 's/CONFIG_PACKAGE_kmod-fullconenat=y/# CONFIG_PACKAGE_kmod-fullconenat is not set/' .config
         sed -i 's/CONFIG_PACKAGE_kmod-fullconenat=m/# CONFIG_PACKAGE_kmod-fullconenat is not set/' .config
         sed -i 's/CONFIG_PACKAGE_iptables-mod-fullconenat=y/# CONFIG_PACKAGE_iptables-mod-fullconenat is not set/' .config
         sed -i 's/CONFIG_PACKAGE_iptables-mod-fullconenat=m/# CONFIG_PACKAGE_iptables-mod-fullconenat is not set/' .config
         sed -i 's/CONFIG_PACKAGE_luci-app-fullconenat=y/# CONFIG_PACKAGE_luci-app-fullconenat is not set/' .config
         sed -i 's/CONFIG_PACKAGE_luci-app-fullconenat=m/# CONFIG_PACKAGE_luci-app-fullconenat is not set/' .config
-        # 强制禁用IPv6 NAT（25.12 fw4不兼容）
+        # 强制禁用IPv6 NAT（fw4不兼容）
         sed -i 's/CONFIG_PACKAGE_kmod-ipt-nat6=y/# CONFIG_PACKAGE_kmod-ipt-nat6 is not set/' .config
         sed -i 's/CONFIG_PACKAGE_kmod-ipt-nat6=m/# CONFIG_PACKAGE_kmod-ipt-nat6 is not set/' .config
         # 强制设置GRUB等待时间为2秒
@@ -205,6 +207,7 @@ jobs:
           echo "--- 检查自定义脚本 ---"
           tar -tzf "$FIRMWARE_IMG" 2>/dev/null | grep "98-cups-zh-cn" && echo "OK: CUPS脚本已打包" || echo "FAIL: CUPS脚本未打包"
           tar -tzf "$FIRMWARE_IMG" 2>/dev/null | grep "99-grub-timeout" && echo "OK: GRUB脚本已打包" || echo "FAIL: GRUB脚本未打包"
+          tar -tzf "$FIRMWARE_IMG" 2>/dev/null | grep "97-timecontrol-menu" && echo "OK: timecontrol菜单修复脚本已打包" || echo "FAIL: timecontrol菜单修复脚本未打包"
         else
           echo "未找到固件文件，跳过验证"
         fi
