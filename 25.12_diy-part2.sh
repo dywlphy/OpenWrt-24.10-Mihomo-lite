@@ -114,17 +114,29 @@ endef
 
 define Package/cups-zh-cn/description
   Simplified Chinese language templates for CUPS web interface.
-  Replaces default English templates after installation.
+  Will replace default English templates after installation.
 endef
 
 define Build/Compile
 endef
 
 define Package/cups-zh-cn/install
-	$(INSTALL_DIR) $(1)/usr/share/cups/templates
-	$(CP) ./files/usr/share/cups/templates/* $(1)/usr/share/cups/templates/
-	$(INSTALL_DIR) $(1)/usr/share/cups/doc-root
-	$(CP) ./files/usr/share/cups/doc-root/* $(1)/usr/share/cups/doc-root/
+	$(INSTALL_DIR) $(1)/usr/share/cups-zh/templates
+	$(CP) ./files/usr/share/cups/templates/* $(1)/usr/share/cups-zh/templates/
+	$(INSTALL_DIR) $(1)/usr/share/cups-zh/doc-root
+	$(CP) ./files/usr/share/cups/doc-root/* $(1)/usr/share/cups-zh/doc-root/
+endef
+
+define Package/cups-zh-cn/postinst
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ]; then
+    if [ -d /usr/share/cups-zh/templates ]; then
+        cp -f /usr/share/cups-zh/templates/* /usr/share/cups/templates/ 2>/dev/null
+    fi
+    if [ -d /usr/share/cups-zh/doc-root ]; then
+        cp -f /usr/share/cups-zh/doc-root/* /usr/share/cups/doc-root/ 2>/dev/null
+    fi
+fi
 endef
 
 $(eval $(call BuildPackage,cups-zh-cn))
