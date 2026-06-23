@@ -90,6 +90,9 @@ done
 # 注释掉 init.d 中的版本检查代码（按内容匹配，不怕版本更新）
 if [ -f /etc/init.d/openclash ]; then
     sed -i '/version_rmt_file=/s/^/   # /' /etc/init.d/openclash
+    sed -i '/raw.githubusercontent.com/s/^/   # /' /etc/init.d/openclash
+    sed -i '/openclash_last_version/s/^/   # /' /etc/init.d/openclash
+    sed -i '/clash_last_version/s/^/   # /' /etc/init.d/openclash
     sed -i '/del_clash_log$/s/^/   # /' /etc/init.d/openclash
 fi
 exit 0
@@ -158,8 +161,8 @@ fi
 
 # 预下载 OpenClash 核心
 echo "[6/6] 预下载 OpenClash 核心..."
-CORE_FILE="clash-linux-amd64.tar.gz"
-CORE_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-amd64.tar.gz"
+CORE_FILE="mihomo-linux-amd64-v3-v1.19.27.gz"
+CORE_URL="https://github.com/MetaCubeX/mihomo/releases/download/v1.19.27/mihomo-linux-amd64-v3-v1.19.27.gz"
 CORE_DEST="package/base-files/files/etc/openclash/core"
 if [ -d "package/luci-app-openclash" ]; then
     mkdir -p $CORE_DEST
@@ -176,8 +179,7 @@ if [ -d "package/luci-app-openclash" ]; then
         fi
     fi
     if [ -f "/tmp/$CORE_FILE" ] && [ -s "/tmp/$CORE_FILE" ]; then
-        tar -xzf /tmp/$CORE_FILE -C $CORE_DEST/
-        mv $CORE_DEST/clash* $CORE_DEST/clash_meta 2>/dev/null || true
+        gunzip -c /tmp/$CORE_FILE > $CORE_DEST/clash_meta
         chmod 755 $CORE_DEST/clash_meta 2>/dev/null || true
         echo " OpenClash 核心已预置到 base-files"
         rm -f /tmp/$CORE_FILE
