@@ -161,8 +161,8 @@ fi
 
 # 预下载 OpenClash 核心
 echo "[6/6] 预下载 OpenClash 核心..."
-CORE_FILE="mihomo-linux-amd64-v3-v1.19.27.gz"
-CORE_URL="https://github.com/MetaCubeX/mihomo/releases/download/v1.19.27/mihomo-linux-amd64-v3-v1.19.27.gz"
+CORE_FILE="clash-linux-amd64.tar.gz"
+CORE_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-amd64.tar.gz"
 CORE_DEST="package/base-files/files/etc/openclash/core"
 if [ -d "package/luci-app-openclash" ]; then
     mkdir -p $CORE_DEST
@@ -179,7 +179,8 @@ if [ -d "package/luci-app-openclash" ]; then
         fi
     fi
     if [ -f "/tmp/$CORE_FILE" ] && [ -s "/tmp/$CORE_FILE" ]; then
-        gunzip -c /tmp/$CORE_FILE > $CORE_DEST/clash_meta
+        tar -xzf /tmp/$CORE_FILE -C $CORE_DEST/
+        mv $CORE_DEST/clash* $CORE_DEST/clash_meta 2>/dev/null || true
         chmod 755 $CORE_DEST/clash_meta 2>/dev/null || true
         echo " OpenClash 核心已预置到 base-files"
         rm -f /tmp/$CORE_FILE
