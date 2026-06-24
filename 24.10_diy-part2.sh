@@ -84,6 +84,9 @@ for i in 1 2 3 4 5; do
         uci set openclash.config.check_dev_version='0'
         uci set openclash.config.config_reload='0'
         uci commit openclash
+        # 增加启动依赖，解决重启后不自动就绪的问题
+        sed -i '/START=/a \DEPENDS="network firewall dnsmasq"' /etc/init.d/openclash
+        /etc/init.d/openclash enable
         break
     fi
     sleep 1
