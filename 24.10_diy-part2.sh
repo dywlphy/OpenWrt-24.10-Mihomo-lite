@@ -82,6 +82,7 @@ for i in 1 2 3 4 5; do
     if [ -f /etc/config/openclash ]; then
         uci set openclash.config.check_version='0'
         uci set openclash.config.check_dev_version='0'
+        uci set openclash.config.config_reload='0'
         uci commit openclash
         break
     fi
@@ -95,6 +96,17 @@ if [ -f /etc/init.d/openclash ]; then
     sed -i '/clash_last_version/s/^/   # /' /etc/init.d/openclash
     sed -i '/del_clash_log$/s/^/   # /' /etc/init.d/openclash
 fi
+# 添加 GitHub hosts 解析（解决国内无法访问 raw.githubusercontent.com）
+grep -q "raw.githubusercontent.com" /etc/hosts || {
+    echo "185.199.108.133 raw.githubusercontent.com" >> /etc/hosts
+    echo "185.199.109.133 raw.githubusercontent.com" >> /etc/hosts
+    echo "185.199.110.133 raw.githubusercontent.com" >> /etc/hosts
+    echo "185.199.111.133 raw.githubusercontent.com" >> /etc/hosts
+}
+# 创建假的版本文件，阻止重复下载
+echo "0.0.0" > /tmp/openclash_last_version
+echo "0.0.0" > /tmp/clash_last_version
+chmod 444 /tmp/openclash_last_version /tmp/clash_last_version
 exit 0
 EOF
 chmod +x package/base-files/files/etc/uci-defaults/99-openclash-settings
